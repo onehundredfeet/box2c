@@ -9,11 +9,9 @@
 #include "sample.h"
 #include "settings.h"
 
-#include "box2d/api.h"
+#include "box2d/base.h"
 #include "box2d/box2d.h"
-#include "box2d/constants.h"
 #include "box2d/math_functions.h"
-#include "box2d/timer.h"
 
 #include <glad/glad.h>
 // Keep glad.h before glfw3.h
@@ -567,7 +565,8 @@ int main(int, char**)
 	// MSAA
 	glfwWindowHint(GLFW_SAMPLES, 4);
 
-	snprintf(buffer, 128, "Box2D Version %d.%d.%d (alpha)", b2_version.major, b2_version.minor, b2_version.revision);
+	b2Version version = b2GetVersion();
+	snprintf(buffer, 128, "Box2D Version %d.%d.%d (beta)", version.major, version.minor, version.revision);
 
 	if (GLFWmonitor* primaryMonitor = glfwGetPrimaryMonitor())
 	{
@@ -644,12 +643,12 @@ int main(int, char**)
 		if (glfwGetKey(g_mainWindow, GLFW_KEY_Z) == GLFW_PRESS)
 		{
 			// Zoom out
-			g_camera.m_zoom = b2MinFloat(1.005f * g_camera.m_zoom, 20.0f);
+			g_camera.m_zoom = b2MinFloat(1.005f * g_camera.m_zoom, 100.0f);
 		}
 		else if (glfwGetKey(g_mainWindow, GLFW_KEY_X) == GLFW_PRESS)
 		{
 			// Zoom in
-			g_camera.m_zoom = B2_MAX(0.995f * g_camera.m_zoom, 0.02f);
+			g_camera.m_zoom = b2MaxFloat(0.995f * g_camera.m_zoom, 0.5f);
 		}
 
 		glfwGetWindowSize(g_mainWindow, &g_camera.m_width, &g_camera.m_height);

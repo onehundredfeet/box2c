@@ -9,9 +9,6 @@
 #include "settings.h"
 
 #include "box2d/box2d.h"
-#include "box2d/color.h"
-#include "box2d/geometry.h"
-#include "box2d/hull.h"
 #include "box2d/math_functions.h"
 
 #include <GLFW/glfw3.h>
@@ -36,7 +33,7 @@ public:
 		if (settings.restart == false)
 		{
 			g_camera.m_center = m_viewPosition;
-			g_camera.m_zoom = 1.0f;
+			g_camera.m_zoom = 25.0f * 1.0f;
 			settings.drawJoints = false;
 			settings.useCameraBounds = true;
 		}
@@ -133,7 +130,7 @@ public:
 				for (int i = 0; i < 5; ++i)
 				{
 					Donut donut;
-					donut.Spawn(m_worldId, position, 0.75f, donutIndex + 1, NULL);
+					donut.Spawn(m_worldId, position, 0.75f, 0, NULL);
 					donutIndex += 1;
 					position.x += 2.0f;
 				}
@@ -203,7 +200,7 @@ public:
 
 		if (m_explode)
 		{
-			g_draw.DrawCircle(m_explosionPosition, radius, b2_colorAzure3);
+			g_draw.DrawCircle(m_explosionPosition, radius, b2_colorAzure);
 		}
 
 		if (glfwGetKey(g_mainWindow, GLFW_KEY_A) == GLFW_PRESS)

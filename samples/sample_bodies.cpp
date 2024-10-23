@@ -6,9 +6,6 @@
 #include "settings.h"
 
 #include "box2d/box2d.h"
-#include "box2d/color.h"
-#include "box2d/geometry.h"
-#include "box2d/hull.h"
 
 #include <imgui.h>
 
@@ -21,7 +18,7 @@ class BodyType : public Sample
 		if (settings.restart == false)
 		{
 			g_camera.m_center = {0.8f, 6.4f};
-			g_camera.m_zoom = 0.4f;
+			g_camera.m_zoom = 25.0f * 0.4f;
 		}
 
 		m_type = b2_dynamicBody;
@@ -303,7 +300,7 @@ public:
 		if (settings.restart == false)
 		{
 			g_camera.m_center = {-2.0f, 7.0f};
-			g_camera.m_zoom = 0.4f;
+			g_camera.m_zoom = 25.0f * 0.4f;
 		}
 
 		// Ground body
@@ -483,7 +480,7 @@ public:
 		if (settings.restart == false)
 		{
 			g_camera.m_center = {2.3f, 10.0f};
-			g_camera.m_zoom = 0.5f;
+			g_camera.m_zoom = 25.0f * 0.5f;
 		}
 
 		b2BodyId groundId = b2_nullBodyId;
@@ -552,7 +549,7 @@ public:
 	{
 		Sample::Step(settings);
 
-		g_draw.DrawCircle(m_explosionPosition, m_explosionRadius, b2_colorAzure3);
+		g_draw.DrawCircle(m_explosionPosition, m_explosionRadius, b2_colorAzure);
 	}
 
 	static Sample* Create(Settings& settings)
@@ -577,7 +574,7 @@ public:
 		if (settings.restart == false)
 		{
 			g_camera.m_center = {3.0f, 50.0f};
-			g_camera.m_zoom = 2.2f;
+			g_camera.m_zoom = 25.0f * 2.2f;
 		}
 
 		b2BodyId groundId = b2_nullBodyId;
@@ -587,21 +584,27 @@ public:
 
 			b2Segment segment = {{-20.0f, 0.0f}, {20.0f, 0.0f}};
 			b2ShapeDef shapeDef = b2DefaultShapeDef();
-			b2CreateSegmentShape(groundId, &shapeDef, &segment);
+			m_groundShapeId = b2CreateSegmentShape(groundId, &shapeDef, &segment);
 		}
 
-		// Sleeping body
+		// Sleeping body with sensors
+		for (int i = 0; i < 2; ++i)
 		{
 			b2BodyDef bodyDef = b2DefaultBodyDef();
 			bodyDef.type = b2_dynamicBody;
-			bodyDef.position = {-4.0f, 3.0f};
+			bodyDef.position = {-4.0f, 3.0f + 2.0f * i};
 			bodyDef.isAwake = false;
 			bodyDef.enableSleep = true;
 			b2BodyId bodyId = b2CreateBody(m_worldId, &bodyDef);
 
-			b2Capsule capsule = {{0.0f, 1.0f}, {1.0f, 1.0f}, 1.0f};
+			b2Capsule capsule = {{0.0f, 1.0f}, {1.0f, 1.0f}, 0.75f};
 			b2ShapeDef shapeDef = b2DefaultShapeDef();
 			b2CreateCapsuleShape(bodyId, &shapeDef, &capsule);
+
+			shapeDef.isSensor = true;
+			capsule.radius = 1.0f;
+			m_sensorIds[i] = b2CreateCapsuleShape(bodyId, &shapeDef, &capsule);
+			m_sensorTouching[i] = false;
 		}
 
 		// Sleeping body but sleep is disabled
@@ -698,12 +701,61 @@ public:
 		ImGui::End();
 	}
 
+	void Step(Settings& settings) override
+	{
+		Sample::Step(settings);
+
+		// Detect sensors touching the ground
+		b2SensorEvents sensorEvents = b2World_GetSensorEvents(m_worldId);
+
+		for (int i = 0; i < sensorEvents.beginCount; ++i)
+		{
+			b2SensorBeginTouchEvent* event = sensorEvents.beginEvents + i;
+			if (B2_ID_EQUALS(event->visitorShapeId, m_groundShapeId))
+			{
+				if (B2_ID_EQUALS(event->sensorShapeId, m_sensorIds[0]))
+				{
+					m_sensorTouching[0] = true;
+				}
+				else if (B2_ID_EQUALS(event->sensorShapeId, m_sensorIds[1]))
+				{
+					m_sensorTouching[1] = true;
+				}
+			}
+		}
+
+		for (int i = 0; i < sensorEvents.endCount; ++i)
+		{
+			b2SensorEndTouchEvent* event = sensorEvents.endEvents + i;
+			if (B2_ID_EQUALS(event->visitorShapeId, m_groundShapeId))
+			{
+				if (B2_ID_EQUALS(event->sensorShapeId, m_sensorIds[0]))
+				{
+					m_sensorTouching[0] = false;
+				}
+				else if (B2_ID_EQUALS(event->sensorShapeId, m_sensorIds[1]))
+				{
+					m_sensorTouching[1] = false;
+				}
+			}
+		}
+
+		for (int i = 0; i < 2; ++i)
+		{
+			g_draw.DrawString(5, m_textLine, "sensor touch %d = %s", i, m_sensorTouching[i] ? "true" : "false");
+			m_textLine += m_textIncrement;
+		}
+	}
+
 	static Sample* Create(Settings& settings)
 	{
 		return new Sleep(settings);
 	}
 
 	b2BodyId m_pendulumId;
+	b2ShapeId m_groundShapeId;
+	b2ShapeId m_sensorIds[2];
+	bool m_sensorTouching[2];
 };
 
 static int sampleSleep = RegisterSample("Bodies", "Sleep", Sleep::Create);

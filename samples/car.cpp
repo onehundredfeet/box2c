@@ -4,8 +4,6 @@
 #include "car.h"
 
 #include "box2d/box2d.h"
-#include "box2d/geometry.h"
-#include "box2d/hull.h"
 #include "box2d/math_functions.h"
 
 #include <assert.h>
@@ -35,12 +33,12 @@ void Car::Spawn(b2WorldId worldId, b2Vec2 position, float scale, float hertz,
 
 	for (int i = 0; i < 6; ++i)
 	{
-		vertices[i].x *= scale;
-		vertices[i].y *= scale;
+		vertices[i].x *= 0.85f * scale;
+		vertices[i].y *= 0.85f * scale;
 	}
 
 	b2Hull hull = b2ComputeHull(vertices, 6);
-	b2Polygon chassis = b2MakePolygon(&hull, 0.0f);
+	b2Polygon chassis = b2MakePolygon(&hull, 0.15f * scale);
 
 	b2ShapeDef shapeDef = b2DefaultShapeDef();
 	shapeDef.density = 1.0f / scale;

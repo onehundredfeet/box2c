@@ -12,8 +12,6 @@
 #include "x86/avx2.h"
 #include "x86/fma.h"
 
-#include "box2d/color.h"
-
 // Soft contact constraints with sub-stepping support
 // http://mmacklin.com/smallsteps.pdf
 // https://box2d.org/files/ErinCatto_SoftConstraints_GDC2011.pdf
@@ -275,7 +273,7 @@ void b2SolveOverflowContacts(b2StepContext* context, bool useBias)
 			}
 			else if (useBias)
 			{
-				velocityBias = B2_MAX(softness.biasRate * s, -pushout);
+				velocityBias = b2MaxFloat(softness.biasRate * s, -pushout);
 				massScale = softness.massScale;
 				impulseScale = softness.impulseScale;
 			}
@@ -388,43 +386,48 @@ void b2ApplyOverflowRestitution(b2StepContext* context)
 		b2Vec2 normal = constraint->normal;
 		int pointCount = constraint->pointCount;
 
-		for (int j = 0; j < pointCount; ++j)
+		// it is possible to get more accurate restitution by iterating
+		// this only makes a difference if there are two contact points
+		// for (int iter = 0; iter < 10; ++iter)
 		{
-			b2ContactConstraintPoint* cp = constraint->points + j;
-
-			// if the normal impulse is zero then there was no collision
-			// this skips speculative contact points that didn't generate an impulse
-			// The max normal impulse is used in case there was a collision that moved away within the sub-step process
-			if (cp->relativeVelocity > -threshold || cp->maxNormalImpulse == 0.0f)
+			for (int j = 0; j < pointCount; ++j)
 			{
-				continue;
+				b2ContactConstraintPoint* cp = constraint->points + j;
+
+				// if the normal impulse is zero then there was no collision
+				// this skips speculative contact points that didn't generate an impulse
+				// The max normal impulse is used in case there was a collision that moved away within the sub-step process
+				if (cp->relativeVelocity > -threshold || cp->maxNormalImpulse == 0.0f)
+				{
+					continue;
+				}
+
+				// fixed anchor points
+				b2Vec2 rA = cp->anchorA;
+				b2Vec2 rB = cp->anchorB;
+
+				// relative normal velocity at contact
+				b2Vec2 vrB = b2Add(vB, b2CrossSV(wB, rB));
+				b2Vec2 vrA = b2Add(vA, b2CrossSV(wA, rA));
+				float vn = b2Dot(b2Sub(vrB, vrA), normal);
+
+				// compute normal impulse
+				float impulse = -cp->normalMass * (vn + restitution * cp->relativeVelocity);
+
+				// clamp the accumulated impulse
+				// todo should this be stored?
+				float newImpulse = b2MaxFloat(cp->normalImpulse + impulse, 0.0f);
+				impulse = newImpulse - cp->normalImpulse;
+				cp->normalImpulse = newImpulse;
+				cp->maxNormalImpulse = b2MaxFloat(cp->maxNormalImpulse, impulse);
+
+				// apply contact impulse
+				b2Vec2 P = b2MulSV(impulse, normal);
+				vA = b2MulSub(vA, mA, P);
+				wA -= iA * b2Cross(rA, P);
+				vB = b2MulAdd(vB, mB, P);
+				wB += iB * b2Cross(rB, P);
 			}
-
-			// fixed anchor points
-			b2Vec2 rA = cp->anchorA;
-			b2Vec2 rB = cp->anchorB;
-
-			// relative normal velocity at contact
-			b2Vec2 vrB = b2Add(vB, b2CrossSV(wB, rB));
-			b2Vec2 vrA = b2Add(vA, b2CrossSV(wA, rA));
-			float vn = b2Dot(b2Sub(vrB, vrA), normal);
-
-			// compute normal impulse
-			float impulse = -cp->normalMass * (vn + restitution * cp->relativeVelocity);
-
-			// clamp the accumulated impulse
-			// todo should this be stored?
-			float newImpulse = B2_MAX(cp->normalImpulse + impulse, 0.0f);
-			impulse = newImpulse - cp->normalImpulse;
-			cp->normalImpulse = newImpulse;
-			cp->maxNormalImpulse = b2MaxFloat(cp->maxNormalImpulse, impulse);
-
-			// apply contact impulse
-			b2Vec2 P = b2MulSV(impulse, normal);
-			vA = b2MulSub(vA, mA, P);
-			wA -= iA * b2Cross(rA, P);
-			vB = b2MulAdd(vB, mB, P);
-			wB += iB * b2Cross(rB, P);
 		}
 
 		stateA->linearVelocity = vA;
@@ -571,7 +574,7 @@ static void b2ScatterBodies(b2BodyState* restrict states, int* restrict indices,
 	b2FloatW tt6 = simde_mm256_shuffle_ps(t5, t7, SIMDE_MM_SHUFFLE(1, 0, 1, 0));
 	b2FloatW tt7 = simde_mm256_shuffle_ps(t5, t7, SIMDE_MM_SHUFFLE(3, 2, 3, 2));
 
-	// I don't use any dummy body in the body array because this will lead to multi-threaded sharing and the
+	// I don't use any dummy body in the body array because this will lead to multithreaded sharing and the
 	// associated cache flushing.
 	if (indices[0] != B2_NULL_INDEX)
 		simde_mm256_store_ps((float*)(states + indices[0]), simde_mm256_permute2f128_ps(tt0, tt4, 0x20));

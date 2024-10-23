@@ -25,6 +25,8 @@
 // This is used for debugging by making all constraints be assigned to overflow.
 #define B2_FORCE_OVERFLOW 0
 
+_Static_assert(b2_graphColorCount == 12, "graph color count assumed to be 12");
+
 void b2CreateGraph(b2ConstraintGraph* graph, int bodyCapacity)
 {
 	_Static_assert(b2_graphColorCount >= 2, "must have at least two constraint graph colors");
@@ -44,15 +46,15 @@ void b2CreateGraph(b2ConstraintGraph* graph, int bodyCapacity)
 	}
 }
 
-void b2DestroyGraph(b2ConstraintGraph* graph, b2BlockAllocator* allocator)
+void b2DestroyGraph(b2ConstraintGraph* graph)
 {
 	for (int i = 0; i < b2_graphColorCount; ++i)
 	{
 		b2GraphColor* color = graph->colors + i;
 		b2DestroyBitSet(&color->bodySet);
 
-		b2DestroyContactArray(allocator, &color->contacts);
-		b2DestroyJointArray(allocator, &color->joints);
+		b2DestroyContactArray(&color->contacts);
+		b2DestroyJointArray(&color->joints);
 	}
 }
 
@@ -68,7 +70,6 @@ void b2AddContactToGraph(b2World* world, b2ContactSim* contactSim, b2Contact* co
 	b2ConstraintGraph* graph = &world->constraintGraph;
 	int colorIndex = b2_overflowIndex;
 
-#if B2_FORCE_OVERFLOW == 0
 	int bodyIdA = contact->edges[0].bodyId;
 	int bodyIdB = contact->edges[1].bodyId;
 	b2CheckIndex(world->bodyArray, bodyIdA);
@@ -80,6 +81,7 @@ void b2AddContactToGraph(b2World* world, b2ContactSim* contactSim, b2Contact* co
 	bool staticB = bodyB->setIndex == b2_staticSet;
 	B2_ASSERT(staticA == false || staticB == false);
 
+#if B2_FORCE_OVERFLOW == 0
 	if (staticA == false && staticB == false)
 	{
 		for (int i = 0; i < b2_overflowIndex; ++i)
@@ -134,7 +136,7 @@ void b2AddContactToGraph(b2World* world, b2ContactSim* contactSim, b2Contact* co
 	contact->colorIndex = colorIndex;
 	contact->localIndex = color->contacts.count;
 
-	b2ContactSim* newContact = b2AddContact(&world->blockAllocator, &color->contacts);
+	b2ContactSim* newContact = b2AddContact(&color->contacts);
 	memcpy(newContact, contactSim, sizeof(b2ContactSim));
 
 	// todo perhaps skip this if the contact is already awake
@@ -280,7 +282,7 @@ b2JointSim* b2CreateJointInGraph(b2World* world, b2Joint* joint)
 
 	int colorIndex = b2AssignJointColor(graph, bodyIdA, bodyIdB, staticA, staticB);
 
-	b2JointSim* jointSim = b2AddJoint(&world->blockAllocator, &graph->colors[colorIndex].joints);
+	b2JointSim* jointSim = b2AddJoint(&graph->colors[colorIndex].joints);
 	joint->colorIndex = colorIndex;
 	joint->localIndex = graph->colors[colorIndex].joints.count - 1;
 	return jointSim;

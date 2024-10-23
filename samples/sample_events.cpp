@@ -8,9 +8,6 @@
 #include "settings.h"
 
 #include "box2d/box2d.h"
-#include "box2d/color.h"
-#include "box2d/geometry.h"
-#include "box2d/hull.h"
 #include "box2d/math_functions.h"
 
 #include <GLFW/glfw3.h>
@@ -32,7 +29,7 @@ public:
 		if (settings.restart == false)
 		{
 			g_camera.m_center = {0.0f, 0.0f};
-			g_camera.m_zoom = 1.333f;
+			g_camera.m_zoom = 25.0f * 1.333f;
 		}
 		
 		settings.drawJoints = false;
@@ -345,7 +342,7 @@ public:
 		if (settings.restart == false)
 		{
 			g_camera.m_center = {0.0f, 0.0f};
-			g_camera.m_zoom = 1.75f;
+			g_camera.m_zoom = 25.0f * 1.75f;
 		}
 
 		{
@@ -369,6 +366,7 @@ public:
 			bodyDef.gravityScale = 0.0f;
 			bodyDef.linearDamping = 0.5f;
 			bodyDef.angularDamping = 0.5f;
+			bodyDef.isBullet = true;
 			m_playerId = b2CreateBody(m_worldId, &bodyDef);
 
 			b2Circle circle = {{0.0f, 0.0f}, 1.0f};
@@ -674,7 +672,7 @@ public:
 		if (settings.restart == false)
 		{
 			g_camera.m_center = {0.5f, 7.5f};
-			g_camera.m_zoom = 0.4f;
+			g_camera.m_zoom = 25.0f * 0.4f;
 		}
 
 		b2World_SetPreSolveCallback(m_worldId, PreSolveStatic, this);
@@ -882,7 +880,7 @@ public:
 
 		if (settings.hertz > 0.0f)
 		{
-			m_jumpDelay = B2_MAX(0.0f, m_jumpDelay - 1.0f / settings.hertz);
+			m_jumpDelay = b2MaxFloat(0.0f, m_jumpDelay - 1.0f / settings.hertz);
 		}
 	}
 
@@ -917,8 +915,8 @@ public:
 	{
 		if (settings.restart == false)
 		{
-			g_camera.m_zoom = 0.55f;
 			g_camera.m_center = {2.0f, 8.0f};
+			g_camera.m_zoom = 25.0f * 0.55f;
 		}
 
 		{
@@ -1015,7 +1013,6 @@ public:
 		ImGui::End();
 	}
 
-
 	void Step(Settings& settings) override
 	{
 		if (settings.pause == false && (m_stepCount & 15) == 15 && m_count < e_count)
@@ -1053,7 +1050,7 @@ public:
 			}
 		}
 
-		g_draw.DrawCircle(m_explosionPosition, m_explosionRadius, b2_colorAzure3);
+		g_draw.DrawCircle(m_explosionPosition, m_explosionRadius, b2_colorAzure);
 
 		g_draw.DrawString(5, m_textLine, "sleep count: %d", m_sleepCount);
 		m_textLine += m_textIncrement;

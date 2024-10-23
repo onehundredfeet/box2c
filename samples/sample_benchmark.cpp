@@ -7,8 +7,6 @@
 #include "settings.h"
 
 #include "box2d/box2d.h"
-#include "box2d/geometry.h"
-#include "box2d/hull.h"
 #include "box2d/math_functions.h"
 
 #include <GLFW/glfw3.h>
@@ -37,7 +35,7 @@ public:
 		if (settings.restart == false)
 		{
 			g_camera.m_center = {8.0f, 53.0f};
-			g_camera.m_zoom = 2.35f;
+			g_camera.m_zoom = 25.0f * 2.35f;
 		}
 
 		settings.drawJoints = false;
@@ -208,7 +206,7 @@ public:
 
 						// Don't put a function call into a macro.
 						float value = RandomFloat(-1.0f, 1.0f);
-						box.radius = 0.25f * B2_MAX(0.0f, value);
+						box.radius = 0.25f * b2MaxFloat(0.0f, value);
 						b2CreatePolygonShape(m_bodies[index], &shapeDef, &box);
 					}
 					else
@@ -285,7 +283,7 @@ public:
 		if (settings.restart == false)
 		{
 			g_camera.m_center = {1.5f, 10.0f};
-			g_camera.m_zoom = 0.6f;
+			g_camera.m_zoom = 25.0f * 0.6f;
 		}
 
 		b2BodyId groundId;
@@ -396,7 +394,7 @@ public:
 		if (settings.restart == false)
 		{
 			g_camera.m_center = {1.0f, -5.5};
-			g_camera.m_zoom = 3.4f;
+			g_camera.m_zoom = 25.0f * 3.4f;
 			settings.drawJoints = false;
 		}
 
@@ -583,7 +581,7 @@ public:
 		if (settings.restart == false)
 		{
 			g_camera.m_center = {0.0f, 50.0f};
-			g_camera.m_zoom = 2.2f;
+			g_camera.m_zoom = 25.0f * 2.2f;
 		}
 
 #ifdef NDEBUG
@@ -646,14 +644,14 @@ public:
 		if (settings.restart == false)
 		{
 			g_camera.m_center = {16.0f, 110.0f};
-			g_camera.m_zoom = 5.0f;
+			g_camera.m_zoom = 25.0f * 5.0f;
 		}
 
 		m_extent = 0.5f;
 		m_round = 0.0f;
 		m_baseCount = 10;
-		m_rowCount = g_sampleDebug ? 4 : 20;
-		m_columnCount = g_sampleDebug ? 4 : 20;
+		m_rowCount = g_sampleDebug ? 4 : 13;
+		m_columnCount = g_sampleDebug ? 4 : 14;
 		m_groundId = b2_nullBodyId;
 		m_bodyIds = nullptr;
 		m_bodyCount = 0;
@@ -807,7 +805,7 @@ public:
 		if (settings.restart == false)
 		{
 			g_camera.m_center = {0.0f, 50.0f};
-			g_camera.m_zoom = 2.2f;
+			g_camera.m_zoom = 25.0f * 2.2f;
 		}
 
 		float groundSize = 100.0f;
@@ -923,7 +921,7 @@ public:
 		if (settings.restart == false)
 		{
 			g_camera.m_center = {0.0f, 50.0f};
-			g_camera.m_zoom = 2.2f;
+			g_camera.m_zoom = 25.0f * 2.2f;
 		}
 
 		float groundSize = 100.0f;
@@ -1066,8 +1064,8 @@ public:
 	{
 		if (settings.restart == false)
 		{
-			g_camera.m_zoom = 2.5f;
 			g_camera.m_center = {60.0f, -57.0f};
+			g_camera.m_zoom = 25.0f * 2.5f;
 		}
 
 		constexpr int N = g_sampleDebug ? 10 : 100;
@@ -1169,7 +1167,7 @@ public:
 		if (settings.restart == false)
 		{
 			g_camera.m_center = {60.0f, 6.0f};
-			g_camera.m_zoom = 1.6f;
+			g_camera.m_zoom = 25.0f * 1.6f;
 		}
 
 		b2World_SetGravity(m_worldId, b2Vec2_zero);
@@ -1363,7 +1361,7 @@ public:
 		if (settings.restart == false)
 		{
 			g_camera.m_center = {18.0f, 115.0f};
-			g_camera.m_zoom = 5.5f;
+			g_camera.m_zoom = 25.0f * 5.5f;
 		}
 
 		float grid = 1.0f;
@@ -1453,3 +1451,58 @@ public:
 };
 
 static int sampleCompound = RegisterSample("Benchmark", "Compound", BenchmarkCompound::Create);
+
+class BenchmarkKinematic : public Sample
+{
+public:
+	explicit BenchmarkKinematic(Settings& settings)
+		: Sample(settings)
+	{
+		if (settings.restart == false)
+		{
+			g_camera.m_center = {0.0f, 0.0f};
+			g_camera.m_zoom = 150.0f;
+		}
+
+		float grid = 1.0f;
+
+#ifdef NDEBUG
+		int span = 100;
+#else
+		int span = 20;
+#endif
+
+		b2BodyDef bodyDef = b2DefaultBodyDef();
+		bodyDef.type = b2_kinematicBody;
+		bodyDef.angularVelocity = 1.0f;
+		// defer mass properties to avoid n-squared mass computations
+		bodyDef.automaticMass = false;
+
+		b2ShapeDef shapeDef = b2DefaultShapeDef();
+		shapeDef.filter.categoryBits = 1;
+		shapeDef.filter.maskBits = 2;
+
+		b2BodyId bodyId = b2CreateBody(m_worldId, &bodyDef);
+
+		for (int i = -span; i < span; ++i)
+		{
+			float y = i * grid;
+			for (int j = -span; j < span; ++j)
+			{
+				float x = j * grid;
+				b2Polygon square = b2MakeOffsetBox(0.5f * grid, 0.5f * grid, {x, y}, 0.0f);
+				b2CreatePolygonShape(bodyId, &shapeDef, &square);
+			}
+		}
+
+		// All shapes have been added so I can efficiently compute the mass properties.
+		b2Body_ApplyMassFromShapes(bodyId);
+	}
+
+	static Sample* Create(Settings& settings)
+	{
+		return new BenchmarkKinematic(settings);
+	}
+};
+
+static int sampleKinematic = RegisterSample("Benchmark", "Kinematic", BenchmarkKinematic::Create);

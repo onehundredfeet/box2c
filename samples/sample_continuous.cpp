@@ -6,8 +6,6 @@
 #include "settings.h"
 
 #include "box2d/box2d.h"
-#include "box2d/geometry.h"
-#include "box2d/hull.h"
 #include "box2d/math_functions.h"
 
 #include <GLFW/glfw3.h>
@@ -38,7 +36,7 @@ public:
 		if (settings.restart == false)
 		{
 			g_camera.m_center = {0.0f, 0.0f};
-			g_camera.m_zoom = 0.45f;
+			g_camera.m_zoom = 25.0f * 0.45f;
 		}
 
 		b2BodyDef bodyDef = b2DefaultBodyDef();
@@ -105,7 +103,7 @@ public:
 		else
 		{
 			float h = 0.1f;
-			b2Polygon box = b2MakeBox(10.0f * h, h);
+			b2Polygon box = b2MakeBox(20.0f * h, h);
 			b2CreatePolygonShape(m_bodyId, &shapeDef, &box);
 		}
 	}
@@ -190,7 +188,7 @@ public:
 		if (settings.restart == false)
 		{
 			g_camera.m_center = {0.0f, 0.0f};
-			g_camera.m_zoom = 0.35f;
+			g_camera.m_zoom = 25.0f * 0.35f;
 		}
 
 		b2BodyDef bodyDef = b2DefaultBodyDef();
@@ -265,7 +263,7 @@ public:
 		if (settings.restart == false)
 		{
 			g_camera.m_center = {1.0f, 5.0f};
-			g_camera.m_zoom = 0.25f;
+			g_camera.m_zoom = 25.0f * 0.25f;
 		}
 
 		{
@@ -402,7 +400,7 @@ public:
 		if (settings.restart == false)
 		{
 			g_camera.m_center = {1.5f, 16.0f};
-			g_camera.m_zoom = 0.8f;
+			g_camera.m_zoom = 25.0f * 0.8f;
 		}
 
 		m_groundId = b2_nullBodyId;
@@ -671,17 +669,18 @@ public:
 
 static int sampleGhostCollision = RegisterSample("Continuous", "Ghost Collision", GhostCollision::Create);
 
-// Speculative collision failure case suggested by Dirk Gregorius
-class SpeculativeFail : public Sample
+// Speculative collision failure case suggested by Dirk Gregorius. This uses
+// a simple fallback scheme to prevent tunneling.
+class SpeculativeFallback : public Sample
 {
 public:
-	explicit SpeculativeFail(Settings& settings)
+	explicit SpeculativeFallback(Settings& settings)
 		: Sample(settings)
 	{
 		if (settings.restart == false)
 		{
 			g_camera.m_center = {1.0f, 5.0f};
-			g_camera.m_zoom = 0.25f;
+			g_camera.m_zoom = 25.0f * 0.25f;
 		}
 
 		{
@@ -703,7 +702,7 @@ public:
 			float offset = 8.0f;
 			b2BodyDef bodyDef = b2DefaultBodyDef();
 			bodyDef.type = b2_dynamicBody;
-			bodyDef.position = {offset, 8.0f};
+			bodyDef.position = {offset, 12.0f};
 			bodyDef.linearVelocity = {0.0f, -100.0f};
 			b2BodyId bodyId = b2CreateBody(m_worldId, &bodyDef);
 
@@ -715,11 +714,11 @@ public:
 
 	static Sample* Create(Settings& settings)
 	{
-		return new SpeculativeFail(settings);
+		return new SpeculativeFallback(settings);
 	}
 };
 
-static int sampleSpeculativeFail = RegisterSample("Continuous", "Speculative Fail", SpeculativeFail::Create);
+static int sampleSpeculativeFallback = RegisterSample("Continuous", "Speculative Fallback", SpeculativeFallback::Create);
 
 // This shows a fast moving body that uses continuous collision versus static and dynamic bodies.
 // This is achieved by setting the ball body as a *bullet*.
@@ -732,7 +731,7 @@ public:
 		if (settings.restart == false)
 		{
 			g_camera.m_center = {0.0f, 9.0f};
-			g_camera.m_zoom = 0.5f;
+			g_camera.m_zoom = 25.0f * 0.5f;
 		}
 
 		settings.drawJoints = false;
